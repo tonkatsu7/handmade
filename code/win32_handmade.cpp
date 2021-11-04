@@ -55,14 +55,23 @@ LRESULT CALLBACK MainWindowCallback(HWND   hwnd,
             int Y = Paint.rcPaint.top;
             int Width = Paint.rcPaint.right - Paint.rcPaint.left;
             int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
+            static DWORD Operation = WHITENESS;
             PatBlt(
                 DeviceContext,
                 X,
                 Y,
                 Width,
                 Height,
-                WHITENESS
+                Operation
                 );
+            if (Operation == WHITENESS)
+            {
+                Operation = BLACKNESS;
+            }
+            else
+            {
+                Operation = WHITENESS;
+            }
             EndPaint(hwnd, &Paint);
         } break;
 
