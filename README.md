@@ -24,4 +24,20 @@
 
 1. Copy CMD shortcut to desktop
    1. Right click shortcut properties
-   2. Target = `%windir%\system32\cmd.exe /k w:\handmade\misc\shell.bat`
+   2. Target = `%windir%\system32\cmd.exe /k w:\handmade\misc\shell.bat`4
+
+## Open CMD and VS Code
+
+1. Double click on CMD desktop short cut created in the previous step
+   1. This should take you to  CMD prompt at `W:\handmade` and
+   2. Open VS Code with the handmade project
+2. Build the exe
+   1. In the CMD prompt 
+   2. ```cmd
+      cd code
+      build.bat
+      ```
+   3. Execute debug
+      ```cmd
+      devenv ..\..\build\win32_handmade.exe
+      ```
