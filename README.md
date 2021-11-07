@@ -11,7 +11,7 @@
 [How to Access the Windows 10 Startup Folder](https://www.howtogeek.com/754239/how-to-access-the-windows-10-startup-folder/)
 
 1. Locate personal startup folder
-   1.  `CMD shell:startup`
+   1.  Run... `shell:startup`
    2.  For example, on my Razer this was `C:\Users\sipha\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup`
 2.  Create `startup.bat` inside
     1.  Paste the contents
