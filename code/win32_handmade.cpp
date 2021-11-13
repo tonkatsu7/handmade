@@ -4,84 +4,127 @@
     $Revision: $
     $Creator: Si Pham $
     $Notice: (C) Copyright 2021 by Si Pham, All Rights Reserved. $
-    */
+ */
 
 #include <windows.h>
+#include <stdint.h>
 
-#define internal static 
-#define local_persist static
+#define internal        static 
+#define local_persist   static
 #define global_variable static
+
+typedef int8_t  int8;
+typedef int16_t int16;
+typedef int32_t int32;
+typedef int64_t int64;
+
+typedef uint8_t  uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint64_t uint64;
 
 // TODO: this is a global for now
 global_variable bool Running;
 
 global_variable BITMAPINFO BitmapInfo;  
 global_variable void *BitmapMemory;
-global_variable HBITMAP BitmapHandle;
-global_variable HDC BitmapDeviceContext;
+global_variable int BitmapWidth; // TMP
+global_variable int BitmapHeight; // TMP
 
 internal void 
 Win32ResizeDIBSection(int Width,
                       int Height)
 {
-    if (BitmapHandle)
+    if (BitmapMemory)
     {
-        DeleteObject(BitmapHandle);
+        VirtualFree(BitmapMemory,
+                    0,
+                    MEM_RELEASE);
     }
-    
-    if (!BitmapDeviceContext)
-    {
-        BitmapDeviceContext = CreateCompatibleDC(0);
-    }
+
+    BitmapWidth = Width;
+    BitmapHeight = Height;
+
     /* 
-        typedef struct tagBITMAPINFO {
-                                      BITMAPINFOHEADER bmiHeader;
-                                      RGBQUAD          bmiColors[1];
-                                      } BITMAPINFO, *LPBITMAPINFO, *PBITMAPINFO;
+        typedef struct tagBITMAPINFOHEADER {
+                                            DWORD biSize;
+                                            LONG  biWidth;
+                                            LONG  biHeight;
+                                            WORD  biPlanes;
+                                            WORD  biBitCount;
+                                            DWORD biCompression;
+                                            DWORD biSizeImage;
+                                            LONG  biXPelsPerMeter;
+                                            LONG  biYPelsPerMeter;
+                                            DWORD biClrUsed;
+                                            DWORD biClrImportant;
+                                            } BITMAPINFOHEADER, *PBITMAPINFOHEADER;
         */
 
-        /* 
-            typedef struct tagBITMAPINFOHEADER {
-                                                DWORD biSize;
-                                                LONG  biWidth;
-                                                LONG  biHeight;
-                                                WORD  biPlanes;
-                                                WORD  biBitCount;
-                                                DWORD biCompression;
-                                                DWORD biSizeImage;
-                                                LONG  biXPelsPerMeter;
-                                                LONG  biYPelsPerMeter;
-                                                DWORD biClrUsed;
-                                                DWORD biClrImportant;
-                                                } BITMAPINFOHEADER, *PBITMAPINFOHEADER;
-            */
-
     BitmapInfo.bmiHeader.biSize = sizeof(BitmapInfo.bmiHeader);
-    BitmapInfo.bmiHeader.biWidth = Width;
-    BitmapInfo.bmiHeader.biHeight = Height; 
+    BitmapInfo.bmiHeader.biWidth = BitmapWidth;
+    BitmapInfo.bmiHeader.biHeight = -BitmapHeight; // top down 
     BitmapInfo.bmiHeader.biPlanes = 1;
     BitmapInfo.bmiHeader.biBitCount = 32; // DWROD aligned 32 instead of 24
     BitmapInfo.bmiHeader.biCompression = BI_RGB;
 
-    BitmapHandle = CreateDIBSection(BitmapDeviceContext,
-                                    &BitmapInfo,
-                                    DIB_RGB_COLORS,
-                                    &BitmapMemory,
-                                    0,
-                                    0);
-    // ReleaseDC(0, DeviceContext);
+    int BitsPerPixel = 4;
+    int BitmapMemorySize = (BitmapWidth*BitmapHeight)*BitsPerPixel;
+    BitmapMemory = VirtualAlloc(0,
+                                BitmapMemorySize,
+                                MEM_COMMIT,
+                                PAGE_READWRITE);
+
+    /* 
+        BOOL VirtualProtect(
+                            [in]  LPVOID lpAddress,
+                            [in]  SIZE_T dwSize,
+                            [in]  DWORD  flNewProtect,
+                            [out] PDWORD lpflOldProtect
+                            );
+        */
+    int BytesPerPixel = 4;
+    int Pitch = Width*BytesPerPixel;
+    uint8 *Row = (uint8 *)BitmapMemory; 
+
+    for (int Y = 0; Y < BitmapHeight; ++Y)
+    {
+        uint32 *Pixel = (uint32 *)Row;
+
+        for (int X = 0; X < BitmapWidth; ++X)
+        {
+            /*
+                Pixel + N bytes     +0  +1 +2 +3
+                Pixel in memory:    RR  GG  BB  xx
+             */
+
+            ++Pixel;
+        }
+
+        Row += Pitch;
+    }
 }
 
 internal void 
 Win32UpdateWindow(HDC DeviceContext,
+                  RECT *WindowRect,
                   int X,
                   int Y,
                   int Width,
                   int Height)
 {
+    int WindowWidth = WindowRect->right - WindowRect->left;
+    int WindowHeight = WindowRect->bottom - WindowRect->top;
+
+    //
+
     StretchDIBits(DeviceContext,
+                  /*
                   X, Y, Width, Height,
                   X, Y, Width, Height,
+                  */
+                  X, Y, BitmapWidth, BitmapHeight,
+                  X, Y, WindowWidth, WindowHeight,
                   BitmapMemory,
                   &BitmapInfo,
                   DIB_RGB_COLORS,
@@ -159,7 +202,9 @@ Win32MainWindowCallback(HWND   hWnd,
             int Y = Paint.rcPaint.top;
             int Width = Paint.rcPaint.right - Paint.rcPaint.left;
             int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
-            Win32UpdateWindow(DeviceContext, X, Y, Width, Height);
+            RECT ClientRect;
+            GetClientRect(hWnd, &ClientRect);
+            Win32UpdateWindow(DeviceContext, &ClientRect, X, Y, Width, Height);
             EndPaint(hWnd, &Paint);
         } break;
 
