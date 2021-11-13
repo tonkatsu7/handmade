@@ -47,6 +47,11 @@ RenderWeirdGradient(int XOffset, int YOffset)
 
         for (int X = 0; X < BitmapWidth; ++X)
         {
+            /*
+                Memory:     BB GG RR xx
+                Register:   xx RR GG BB
+                Shift left  24 16  8  0
+             */
             uint8 Blue = (X + XOffset);
             uint8 Green = (Y + YOffset);
             *Pixel++ = ((Green << 8) | Blue);
