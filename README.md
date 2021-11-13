@@ -33,11 +33,11 @@
    2. Open VS Code with the handmade project
 2. Build the exe
    1. In the CMD prompt 
-   2. ```cmd
+      ```cmd
       cd code
       build.bat
       ```
-   3. Execute debug
+   2. Debug in VS 
       ```cmd
       devenv ..\..\build\win32_handmade.exe
       ```
