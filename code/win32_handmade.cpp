@@ -30,6 +30,49 @@ global_variable BITMAPINFO BitmapInfo;
 global_variable void *BitmapMemory;
 global_variable int BitmapWidth; // TMP
 global_variable int BitmapHeight; // TMP
+global_variable int BytesPerPixel = 4;
+
+internal void
+RenderWeirdGradient(int XOffset, int YOffset)
+{
+    int Width = BitmapWidth;
+    int Height = BitmapHeight;
+
+    int Pitch = Width*BytesPerPixel;
+    uint8 *Row = (uint8 *)BitmapMemory; 
+
+    for (int Y = 0; Y < BitmapHeight; ++Y)
+    {
+        uint8 *Pixel = (uint8 *)Row;
+
+        for (int X = 0; X < BitmapWidth; ++X)
+        {
+            /*
+                Pixel +N  bytes     +0  +1  +2  +3
+                
+                Pixel in memory:    BB  GG  RR  xx (little endian)
+
+                But in Windows      0x xx RR GG BB
+             */
+            // BB
+            *Pixel = (uint8)(X + XOffset);
+            ++Pixel;
+            
+            // GG
+            *Pixel = (uint8)(Y + YOffset);
+            ++Pixel;
+            
+            // RR
+            *Pixel = 0;
+            ++Pixel;
+
+            *Pixel = 0;
+            ++Pixel;
+        }
+
+        Row += Pitch;
+    }
+}
 
 internal void 
 Win32ResizeDIBSection(int Width,
@@ -68,7 +111,6 @@ Win32ResizeDIBSection(int Width,
     BitmapInfo.bmiHeader.biBitCount = 32; // DWROD aligned 32 instead of 24
     BitmapInfo.bmiHeader.biCompression = BI_RGB;
 
-    int BytesPerPixel = 4;
     int BitmapMemorySize = (BitmapWidth*BitmapHeight)*BytesPerPixel;
     BitmapMemory = VirtualAlloc(0,
                                 BitmapMemorySize,
@@ -84,40 +126,7 @@ Win32ResizeDIBSection(int Width,
                             );
         */
     
-    int Pitch = Width*BytesPerPixel;
-    uint8 *Row = (uint8 *)BitmapMemory; 
-
-    for (int Y = 0; Y < BitmapHeight; ++Y)
-    {
-        uint8 *Pixel = (uint8 *)Row;
-
-        for (int X = 0; X < BitmapWidth; ++X)
-        {
-            /*
-                Pixel +N  bytes     +0  +1  +2  +3
-                
-                Pixel in memory:    BB  GG  RR  xx (little endian)
-
-                But in Windows      0x xx RR GG BB
-             */
-            // BB
-            *Pixel = (uint8)X;
-            ++Pixel;
-            
-            // GG
-            *Pixel = (uint8)Y;
-            ++Pixel;
-            
-            // RR
-            *Pixel = 0;
-            ++Pixel;
-
-            *Pixel = 0;
-            ++Pixel;
-        }
-
-        Row += Pitch;
-    }
+    RenderWeirdGradient(120, 20);
 }
 
 internal void 
