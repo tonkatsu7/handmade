@@ -68,8 +68,8 @@ Win32ResizeDIBSection(int Width,
     BitmapInfo.bmiHeader.biBitCount = 32; // DWROD aligned 32 instead of 24
     BitmapInfo.bmiHeader.biCompression = BI_RGB;
 
-    int BitsPerPixel = 4;
-    int BitmapMemorySize = (BitmapWidth*BitmapHeight)*BitsPerPixel;
+    int BytesPerPixel = 4;
+    int BitmapMemorySize = (BitmapWidth*BitmapHeight)*BytesPerPixel;
     BitmapMemory = VirtualAlloc(0,
                                 BitmapMemorySize,
                                 MEM_COMMIT,
@@ -83,21 +83,36 @@ Win32ResizeDIBSection(int Width,
                             [out] PDWORD lpflOldProtect
                             );
         */
-    int BytesPerPixel = 4;
+    
     int Pitch = Width*BytesPerPixel;
     uint8 *Row = (uint8 *)BitmapMemory; 
 
     for (int Y = 0; Y < BitmapHeight; ++Y)
     {
-        uint32 *Pixel = (uint32 *)Row;
+        uint8 *Pixel = (uint8 *)Row;
 
         for (int X = 0; X < BitmapWidth; ++X)
         {
             /*
-                Pixel + N bytes     +0  +1 +2 +3
-                Pixel in memory:    RR  GG  BB  xx
-             */
+                Pixel +N  bytes     +0  +1  +2  +3
+                
+                Pixel in memory:    BB  GG  RR  xx (little endian)
 
+                But in Windows      0x xx RR GG BB
+             */
+            // BB
+            *Pixel = (uint8)X;
+            ++Pixel;
+            
+            // GG
+            *Pixel = (uint8)Y;
+            ++Pixel;
+            
+            // RR
+            *Pixel = 0;
+            ++Pixel;
+
+            *Pixel = 0;
             ++Pixel;
         }
 
