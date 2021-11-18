@@ -8,6 +8,7 @@
 
 #include <windows.h>
 #include <stdint.h>
+#include <xinput.h>
 
 #define internal        static 
 #define local_persist   static
@@ -22,7 +23,7 @@ typedef uint8_t  uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
-
+ 
 struct win32_offscreen_buffer
 {
     BITMAPINFO  Info;  
@@ -33,15 +34,22 @@ struct win32_offscreen_buffer
     int         BytesPerPixel; // = 4;
 };
 
-// TODO: this is a global for now
-global_variable bool Running;
-global_variable win32_offscreen_buffer GlobalBackbuffer;
-
 struct win32_window_dimension  
 {
     int Width;
     int Height;
 };
+
+typedef DWORD WINAPI x_input_get_state(DWORD dwUserIndex, XINPUT_STATE* pState);
+typedef DWORD WINAPI x_input_set_state(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration);
+global_variable x_input_get_state *XInputGetState_;
+global_variable x_input_set_state *XInputSetState_;
+#define XInputGetState XInputGetState_
+#define XInputSetState XInputSetState_
+
+// TODO: this is a global for now
+global_variable bool GlobalRunning;
+global_variable win32_offscreen_buffer GlobalBackbuffer;
 
 win32_window_dimension
 Win32GetWindowDimension(HWND Window)
@@ -176,7 +184,7 @@ Win32MainWindowCallback(HWND   hWnd,
 
         case WM_CLOSE:
         {
-            Running = false;
+            GlobalRunning = false;
         } break;
 
         case WM_ACTIVATEAPP:
@@ -186,7 +194,7 @@ Win32MainWindowCallback(HWND   hWnd,
 
         case WM_DESTROY:
         {
-            Running = false;
+            GlobalRunning = false;
         } break;
 
         case WM_PAINT:
@@ -258,11 +266,13 @@ WinMain(HINSTANCE instance,
                                      0);
         if (Window)
         {
-            Running = true;
+            HDC DeviceContext = GetDC(Window);
+
+            GlobalRunning = true;
             int XOffset = 0;
             int YOffset = 0;
             
-            while (Running)
+            while (GlobalRunning)
             {    
                 MSG Message;
 
@@ -270,16 +280,66 @@ WinMain(HINSTANCE instance,
                 {
                     if (Message.message == WM_QUIT)
                     {
-                        Running = false;
+                        GlobalRunning = false;
                     }
 
                     TranslateMessage(&Message);
                     DispatchMessageA(&Message);
                 }
 
-                RenderWeirdGradient(GlobalBackbuffer, XOffset, YOffset);
+                for (DWORD ControllerIndex=0; 
+                     ControllerIndex < XUSER_MAX_COUNT; 
+                     ++ControllerIndex)
+                {
+                    XINPUT_STATE ControllerState;
+                    if (XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS)
+                    {
+                        // Contoller is plugged in
 
-                HDC DeviceContext = GetDC(Window);
+                        /*
+                            typedef struct _XINPUT_STATE {
+                                                            DWORD          dwPacketNumber;
+                                                            XINPUT_GAMEPAD Gamepad;
+                                                            } XINPUT_STATE, *PXINPUT_STATE;
+                         */
+
+                        XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
+
+                        /*
+                            typedef struct _XINPUT_GAMEPAD {
+                                                            WORD  wButtons;
+                                                            BYTE  bLeftTrigger;
+                                                            BYTE  bRightTrigger;
+                                                            SHORT sThumbLX;
+                                                            SHORT sThumbLY;
+                                                            SHORT sThumbRX;
+                                                            SHORT sThumbRY;
+                                                            } XINPUT_GAMEPAD, *PXINPUT_GAMEPAD;
+                         */
+
+                        bool Up = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+                        bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+                        bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+                        bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+                        bool Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
+                        bool Back = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
+                        bool LeftSoulder = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+                        bool RightShoulder = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+                        bool AButton = (Pad->wButtons & XINPUT_GAMEPAD_A);
+                        bool BButton = (Pad->wButtons & XINPUT_GAMEPAD_B);
+                        bool XButton = (Pad->wButtons & XINPUT_GAMEPAD_X);
+                        bool YButton = (Pad->wButtons & XINPUT_GAMEPAD_Y);
+
+                        int16 StickX = Pad->sThumbLX;
+                        int16 StickY = Pad->sThumbLY;
+                    }
+                    else
+                    {
+                        // controller unavailable
+                    }
+                }
+
+                RenderWeirdGradient(GlobalBackbuffer, XOffset, YOffset);
 
                 win32_window_dimension Dimension = Win32GetWindowDimension(Window);
 
@@ -287,11 +347,12 @@ WinMain(HINSTANCE instance,
                                            Dimension.Width, Dimension.Height, 
                                            0, 0, 
                                            Dimension.Width, Dimension.Height);
-                ReleaseDC(Window, DeviceContext);
 
                 ++XOffset;
                 ++YOffset;
             }
+
+            ReleaseDC(Window, DeviceContext);
         }  
         else 
         {
