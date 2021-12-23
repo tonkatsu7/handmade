@@ -40,18 +40,40 @@ struct win32_window_dimension
     int Height;
 };
 
-typedef DWORD WINAPI x_input_get_state(DWORD dwUserIndex, XINPUT_STATE* pState);
-typedef DWORD WINAPI x_input_set_state(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration);
-global_variable x_input_get_state *XInputGetState_;
-global_variable x_input_set_state *XInputSetState_;
-#define XInputGetState XInputGetState_
-#define XInputSetState XInputSetState_
-
 // TODO: this is a global for now
 global_variable bool GlobalRunning;
 global_variable win32_offscreen_buffer GlobalBackbuffer;
 
-win32_window_dimension
+#define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE* pState)
+typedef X_INPUT_GET_STATE(x_input_get_state);
+X_INPUT_GET_STATE(XInputGetStateStub)
+{
+    return(0);
+}
+global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
+#define  XInputGetState XInputGetState_
+
+#define X_INPUT_SET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration)
+typedef X_INPUT_SET_STATE(x_input_set_state);
+X_INPUT_SET_STATE(XInputSetStateStub)
+{
+    return(0);
+}
+global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
+#define XInputSetState XInputSetState_
+
+internal void
+Win32LoadXInput(void)
+{
+    HMODULE XInputLibrary = LoadLibrary("xinput1_4.dll");
+    if (XInputLibrary)
+    {
+        XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
+        XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
+    }
+}
+
+internal win32_window_dimension
 Win32GetWindowDimension(HWND Window)
 {
     win32_window_dimension Result;
@@ -197,6 +219,74 @@ Win32MainWindowCallback(HWND   hWnd,
             GlobalRunning = false;
         } break;
 
+        case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP:
+        case WM_KEYDOWN:
+        case WM_KEYUP:
+        {
+            uint32 VKCode = wParam;
+            bool WasDown = ((lParam & (1 << 30)) != 0);
+            bool IsDown = ((lParam & (1 << 31)) == 0);
+
+            if (VKCode == 'W')
+            {
+                OutputDebugStringA("W\n");
+            }
+            else if (VKCode == 'A')
+            {
+                OutputDebugStringA("A\n");
+            }
+            else if (VKCode == 'S')
+            {
+                OutputDebugStringA("S\n");
+            }
+            else if (VKCode == 'D')
+            {
+                OutputDebugStringA("D\n");
+            }
+            else if (VKCode == 'Q')
+            {
+                OutputDebugStringA("Q\n");
+            }
+            else if (VKCode == 'E')
+            {
+                OutputDebugStringA("E\n");
+            }
+            else if (VKCode == VK_UP)
+            {
+                OutputDebugStringA("UP\n");
+            }
+            else if (VKCode == VK_DOWN)
+            {
+                OutputDebugStringA("DOWN\n");
+            }
+            else if (VKCode == VK_LEFT)
+            {
+                OutputDebugStringA("LEFT\n");
+            }
+            else if (VKCode == VK_RIGHT)
+            {
+                OutputDebugStringA("RIGHT\n");
+            }
+            else if (VKCode == VK_ESCAPE)
+            {                
+                OutputDebugStringA("ESC:");
+                if (IsDown)
+                {
+                    OutputDebugStringA("IsDown ");
+                }
+                if (WasDown)
+                {
+                    OutputDebugStringA("WasDown ");
+                }
+                OutputDebugStringA("\n");
+            }
+            else if (VKCode == VK_SPACE)
+            {
+                OutputDebugStringA("SPACE\n");
+            }
+        } break;
+
         case WM_PAINT:
         {
             /*
@@ -242,6 +332,8 @@ WinMain(HINSTANCE instance,
             LPSTR cmdLine,
               int cmdShow)
 {
+    Win32LoadXInput();
+
     WNDCLASS WindowClass = {};
 
     WindowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
@@ -332,12 +424,22 @@ WinMain(HINSTANCE instance,
 
                         int16 StickX = Pad->sThumbLX;
                         int16 StickY = Pad->sThumbLY;
+
+                        if (AButton)
+                        {
+                            YOffset += 2;
+                        }
                     }
                     else
                     {
                         // controller unavailable
                     }
                 }
+
+                // XINPUT_VIBRATION Vibration;
+                // Vibration.wLeftMotorSpeed = 60000;
+                // Vibration.wRightMotorSpeed = 60000;
+                // XInputSetState(0, &Vibration);
 
                 RenderWeirdGradient(GlobalBackbuffer, XOffset, YOffset);
 
@@ -349,7 +451,7 @@ WinMain(HINSTANCE instance,
                                            Dimension.Width, Dimension.Height);
 
                 ++XOffset;
-                ++YOffset;
+                // ++YOffset;
             }
 
             ReleaseDC(Window, DeviceContext);
