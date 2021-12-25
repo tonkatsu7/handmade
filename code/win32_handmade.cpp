@@ -51,7 +51,7 @@ X_INPUT_GET_STATE(XInputGetStateStub)
     return(0);
 }
 global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
-#define  XInputGetState XInputGetState_
+#define XInputGetState XInputGetState_
 
 #define X_INPUT_SET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration)
 typedef X_INPUT_SET_STATE(x_input_set_state);
@@ -65,7 +65,7 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 internal void
 Win32LoadXInput(void)
 {
-    HMODULE XInputLibrary = LoadLibrary("xinput1_4.dll");
+    HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
     if (XInputLibrary)
     {
         XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
@@ -87,20 +87,20 @@ Win32GetWindowDimension(HWND Window)
 }
 
 internal void
-RenderWeirdGradient(win32_offscreen_buffer Buffer, 
+RenderWeirdGradient(win32_offscreen_buffer *Buffer, 
                                        int BlueOffset, 
                                        int GreenOffset)
 {
-    int Width = Buffer.Width;
-    int Height = Buffer.Height;
+    int Width = Buffer->Width;
+    int Height = Buffer->Height;
 
-    uint8 *Row = (uint8 *)Buffer.Memory; 
+    uint8 *Row = (uint8 *)Buffer->Memory; 
 
-    for (int Y = 0; Y < Buffer.Height; ++Y)
+    for (int Y = 0; Y < Buffer->Height; ++Y)
     {
         uint32 *Pixel = (uint32 *)Row;
 
-        for (int X = 0; X < Buffer.Width; ++X)
+        for (int X = 0; X < Buffer->Width; ++X)
         {
             /*
                 Memory:     BB GG RR xx
@@ -112,7 +112,7 @@ RenderWeirdGradient(win32_offscreen_buffer Buffer,
             *Pixel++ = ((Green << 8) | Blue);
         }
 
-        Row += Buffer.Pitch;
+        Row += Buffer->Pitch;
     }
 }
 
@@ -165,7 +165,7 @@ Win32ResizeDIBSection(win32_offscreen_buffer *Buffer,
 }
 
 internal void 
-Win32DisplayBufferInWindow(win32_offscreen_buffer Buffer,
+Win32DisplayBufferInWindow(win32_offscreen_buffer *Buffer,
                                               HDC DeviceContext,
                                               int WindowWidth,
                                               int WindowHeight,
@@ -179,10 +179,10 @@ Win32DisplayBufferInWindow(win32_offscreen_buffer Buffer,
                   X, Y, Width, Height,
                   X, Y, Width, Height,
                   */
-                  X, Y, Buffer.Width, Buffer.Height,
+                  X, Y, Buffer->Width, Buffer->Height,
                   X, Y, WindowWidth, WindowHeight,
-                  Buffer.Memory,
-                  &Buffer.Info,
+                  Buffer->Memory,
+                  &Buffer->Info,
                   DIB_RGB_COLORS,
                   SRCCOPY);
 }
@@ -227,63 +227,65 @@ Win32MainWindowCallback(HWND   hWnd,
             uint32 VKCode = wParam;
             bool WasDown = ((lParam & (1 << 30)) != 0);
             bool IsDown = ((lParam & (1 << 31)) == 0);
-
-            if (VKCode == 'W')
-            {
-                OutputDebugStringA("W\n");
-            }
-            else if (VKCode == 'A')
-            {
-                OutputDebugStringA("A\n");
-            }
-            else if (VKCode == 'S')
-            {
-                OutputDebugStringA("S\n");
-            }
-            else if (VKCode == 'D')
-            {
-                OutputDebugStringA("D\n");
-            }
-            else if (VKCode == 'Q')
-            {
-                OutputDebugStringA("Q\n");
-            }
-            else if (VKCode == 'E')
-            {
-                OutputDebugStringA("E\n");
-            }
-            else if (VKCode == VK_UP)
-            {
-                OutputDebugStringA("UP\n");
-            }
-            else if (VKCode == VK_DOWN)
-            {
-                OutputDebugStringA("DOWN\n");
-            }
-            else if (VKCode == VK_LEFT)
-            {
-                OutputDebugStringA("LEFT\n");
-            }
-            else if (VKCode == VK_RIGHT)
-            {
-                OutputDebugStringA("RIGHT\n");
-            }
-            else if (VKCode == VK_ESCAPE)
-            {                
-                OutputDebugStringA("ESC:");
-                if (IsDown)
+            if (WasDown != IsDown)
+            { 
+                if (VKCode == 'W')
                 {
-                    OutputDebugStringA("IsDown ");
+                    OutputDebugStringA("W\n");
                 }
-                if (WasDown)
+                else if (VKCode == 'A')
                 {
-                    OutputDebugStringA("WasDown ");
+                    OutputDebugStringA("A\n");
                 }
-                OutputDebugStringA("\n");
-            }
-            else if (VKCode == VK_SPACE)
-            {
-                OutputDebugStringA("SPACE\n");
+                else if (VKCode == 'S')
+                {
+                    OutputDebugStringA("S\n");
+                }
+                else if (VKCode == 'D')
+                {
+                    OutputDebugStringA("D\n");
+                }
+                else if (VKCode == 'Q')
+                {
+                    OutputDebugStringA("Q\n");
+                }
+                else if (VKCode == 'E')
+                {
+                    OutputDebugStringA("E\n");
+                }
+                else if (VKCode == VK_UP)
+                {
+                    OutputDebugStringA("UP\n");
+                }
+                else if (VKCode == VK_DOWN)
+                {
+                    OutputDebugStringA("DOWN\n");
+                }
+                else if (VKCode == VK_LEFT)
+                {
+                    OutputDebugStringA("LEFT\n");
+                }
+                else if (VKCode == VK_RIGHT)
+                {
+                    OutputDebugStringA("RIGHT\n");
+                }
+                else if (VKCode == VK_ESCAPE)
+                {                
+                    OutputDebugStringA("ESC:");
+                    if (IsDown)
+                    {
+                        OutputDebugStringA("IsDown ");
+                    }
+                    if (WasDown)
+                    {
+                        OutputDebugStringA("WasDown ");
+                    }
+                    OutputDebugStringA("\n");
+                }
+                else if (VKCode == VK_SPACE)
+                {
+                    OutputDebugStringA("SPACE\n");
+                }
             }
         } break;
 
@@ -308,7 +310,7 @@ Win32MainWindowCallback(HWND   hWnd,
 
             win32_window_dimension Dimension = Win32GetWindowDimension(hWnd);
             
-            Win32DisplayBufferInWindow(GlobalBackbuffer, 
+            Win32DisplayBufferInWindow(&GlobalBackbuffer, 
                                        DeviceContext, 
                                        Dimension.Width, Dimension.Height, 
                                        X, Y, 
@@ -334,7 +336,7 @@ WinMain(HINSTANCE instance,
 {
     Win32LoadXInput();
 
-    WNDCLASS WindowClass = {};
+    WNDCLASSA WindowClass = {};
 
     WindowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     WindowClass.lpfnWndProc = Win32MainWindowCallback;
@@ -441,11 +443,11 @@ WinMain(HINSTANCE instance,
                 // Vibration.wRightMotorSpeed = 60000;
                 // XInputSetState(0, &Vibration);
 
-                RenderWeirdGradient(GlobalBackbuffer, XOffset, YOffset);
+                RenderWeirdGradient(&GlobalBackbuffer, XOffset, YOffset);
 
                 win32_window_dimension Dimension = Win32GetWindowDimension(Window);
 
-                Win32DisplayBufferInWindow(GlobalBackbuffer, DeviceContext, 
+                Win32DisplayBufferInWindow(&GlobalBackbuffer, DeviceContext, 
                                            Dimension.Width, Dimension.Height, 
                                            0, 0, 
                                            Dimension.Width, Dimension.Height);
